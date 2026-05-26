@@ -2,6 +2,14 @@
 
 A production-grade inference logging and ingestion system for LLM applications — built as a full-stack assignment for Ollive.
 
+## Demo
+
+[![Watch Demo Video](https://img.shields.io/badge/▶%20Watch%20Demo-Google%20Drive-blue?style=for-the-badge&logo=google-drive)](https://drive.google.com/file/d/1Pcn_rA0dwNGah-FA-9Q7gUcLZ3inMmKd/view?usp=drive_link)
+
+> Multi-provider streaming chat, real-time inference dashboard, conversation history, resume/cancel flows, and Kubernetes deployment walkthrough.
+
+---
+
 ## Quick Start (Docker — one command)
 
 ```bash
