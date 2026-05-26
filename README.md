@@ -1,41 +1,39 @@
 # LLM Inference Logger
 
-A full-stack inference logging and ingestion system for LLM applications.
+A production-grade inference logging and ingestion system for LLM applications — built as a full-stack assignment for Ollive.
 
 ## Quick Start (Docker — one command)
 
 ```bash
 cp .env.example .env
-# Fill in your API keys in .env
+# Fill in at least one provider API key in .env
 docker-compose up --build
 ```
 
-- **Frontend / Chatbot**: http://localhost:3000
-- **Ingestion API**: http://localhost:4000
-- **Health check**: http://localhost:4000/health
+| Service | URL |
+|---|---|
+| Chatbot UI | http://localhost:3000 |
+| Ingestion API | http://localhost:4000 |
+| Health check | http://localhost:4000/health |
+
+---
 
 ## Manual Setup (Development)
 
-### Requirements
-- Node.js 20+
-- PostgreSQL 16
-- Redis 7
+**Requirements:** Node.js 20+, PostgreSQL 16, Redis 7
 
-### Ingestion Service
+### Backend
 
 ```bash
 cd backend/ingestion
 npm install
 
-# Set env vars
 export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/inference_logs
 export REDIS_URL=redis://localhost:6379
+export GROQ_API_KEY=gsk_...        # add whichever keys you have
 
-# Init DB
 psql -U postgres -d inference_logs -f ../../scripts/init.sql
-
-npm start          # production
-npm run dev        # watch mode
+npm start
 ```
 
 ### Frontend
@@ -43,115 +41,146 @@ npm run dev        # watch mode
 ```bash
 cd frontend
 npm install
-npm run dev        # http://localhost:3000
+npm run dev    # http://localhost:3000
 ```
-
-Add API keys under **Settings** in the UI (stored in localStorage only).
 
 ---
 
 ## Architecture Overview
 
 ```
-Browser (React + Vite)
-  ├── SDK wrapper (src/lib/sdk.js)
-  │     ├── Calls Anthropic / OpenAI streaming APIs directly
-  │     └── Fires logs to Ingestion service (async, non-blocking)
-  │
-  └── UI pages
-        ├── Chat      — streaming multi-turn chatbot
-        ├── Conversations — list / resume / cancel
-        ├── Dashboard — latency, throughput, error charts (SSE live)
-        └── Settings  — API key management
+Browser (React + Vite + Framer Motion)
+  └── SDK wrapper (frontend/src/lib/sdk.js)
+        ├── Calls /api/proxy/chat  →  backend streams LLM response back
+        └── Fires logs to /api/ingest (async, non-blocking, fire-and-forget)
 
-Ingestion Service (Express.js — port 4000)
-  ├── POST /api/ingest        — receives SDK logs
-  ├── GET  /api/conversations — list / get / cancel / delete
-  ├── GET  /api/dashboard/*   — analytics queries
-  └── GET  /api/events        — SSE stream (Redis pub/sub)
+Ingestion / Proxy Service (Express.js — port 4000)
+  ├── GET  /api/proxy/providers     — which providers are configured
+  ├── POST /api/proxy/chat          — server-side LLM proxy (keys never in browser)
+  ├── POST /api/ingest              — receives SDK logs (rate limited: 60 req/min)
+  ├── GET  /api/conversations       — list / get / cancel / delete
+  ├── GET  /api/dashboard/stats     — aggregated metrics with cost estimates
+  ├── GET  /api/dashboard/throughput— hourly bucketed request data
+  ├── GET  /api/dashboard/logs      — recent inference logs with cost
+  └── GET  /api/events              — SSE stream (Redis pub/sub → live dashboard)
 
 PostgreSQL 16
   ├── conversations
-  ├── messages (PII-redacted)
-  └── inference_logs
+  ├── messages           (PII-redacted, raw_content stored only when PII found)
+  ├── inference_logs     (latency_ms, ttft_ms, tokens, status, previews)
+  ├── token_costs        (pricing lookup per provider/model)
+  └── inference_logs_with_cost  (view — joins logs + costs for estimated USD)
 
 Redis 7
-  └── inference_events channel (pub/sub for SSE)
+  └── inference_events channel  (pub/sub → SSE → live dashboard updates)
 ```
 
 ### Ingestion Flow
 
-1. User sends a message → SDK calls LLM API with streaming
-2. SDK yields token chunks to the UI in real time
-3. On completion (or error), SDK POSTs a batch payload `{ logs, messages, conversations }` to `/api/ingest`
-4. Ingestion service validates (Zod), runs PII redaction, writes to Postgres in a single transaction
-5. Publishes an event to Redis → SSE clients (Dashboard) get a live update
+```
+User message
+  → SDK calls /api/proxy/chat (POST)
+  → Express proxy forwards to provider (Anthropic / OpenAI / Groq / DeepSeek / Gemini)
+  → Provider streams tokens back via SSE
+  → SDK yields chunks to React UI in real time
+  → TTFT captured on first chunk arrival
+  → On stream end: SDK POSTs { logs, messages, conversations } to /api/ingest
+  → Ingest: Zod validation → PII redaction → Postgres transaction
+  → Redis publish → SSE clients (Dashboard) receive live update
+```
 
 ### Logging Strategy
 
-- **Non-blocking**: All log writes are fire-and-forget. A logging failure never interrupts the chat.
-- **Batch writes**: Each LLM call produces one DB transaction (conversation upsert + message insert + log insert).
-- **Preview only**: `input_preview` and `output_preview` store max 200 chars — avoids bloating the logs table with full conversation text (full text lives in `messages`).
-
-### Schema Design Decisions
-
-| Decision | Rationale |
-|---|---|
-| UUID PKs | Safe for distributed generation; no coordination needed |
-| Separate `messages` table | Clean separation of chat history vs inference metadata |
-| `pii_redacted` flag | Audit trail — know which messages were touched |
-| `raw_content` nullable | Store original only when PII was found, saves space |
-| JSONB `metadata` on logs | Flexible bag for future provider-specific fields |
-| Indexes on `request_ts`, `provider`, `status` | Dashboard queries filter/sort by all three |
-
-### PII Redaction
-
-Applied at ingest time before DB write. Patterns redacted: emails, phone numbers, credit cards, SSNs, IP addresses, API keys/tokens (long alphanumeric strings).
+- **Non-blocking** — all log writes are fire-and-forget; a logging failure never interrupts chat
+- **Batch writes** — one DB transaction per LLM call (conversation upsert + message insert + log insert)
+- **TTFT captured** — time-to-first-token measured in the SDK on the first streamed chunk
+- **Preview only** — `input_preview` / `output_preview` store max 200 chars; full text lives in `messages`
+- **Cost estimation** — `token_costs` table seeded with per-model pricing; `inference_logs_with_cost` view computes estimated USD per request
 
 ---
 
-## Bonus Features Completed
+## Schema Design Decisions
 
-- **Multi-provider support** — Anthropic and OpenAI, switchable per conversation
-- **Streaming responses** — true token-by-token streaming via SSE/fetch
-- **Latency + Throughput + Errors dashboards** — live charts, p50/p95/p99 latency
-- **Docker Compose one-command setup** — `docker-compose up --build`
-- **Event-based architecture** — Redis pub/sub → SSE for live dashboard updates
-- **PII redaction** — regex-based, applied before DB storage
-- **Cancel a conversation** — via UI and API (`PATCH /api/conversations/:id/cancel`)
-- **List conversations** — filterable by status (active / cancelled)
-- **Resume a conversation** — click any conversation to reload its history and continue
+| Decision | Rationale |
+|---|---|
+| UUID PKs | Safe for distributed generation with no coordination |
+| Separate `messages` table | Clean separation of chat history vs inference metadata |
+| `pii_redacted` flag + nullable `raw_content` | Audit trail; original stored only when PII found — saves space |
+| `ttft_ms` column | Most meaningful latency metric for streaming UX |
+| `token_costs` lookup table | Decouples pricing from code; update via SQL when providers change rates |
+| `inference_logs_with_cost` view | Cost calculation in the DB layer — no application logic needed |
+| JSONB `metadata` on logs | Flexible bag for future provider-specific fields |
+| Indexes on `request_ts`, `provider`, `status`, `model` | Dashboard queries filter/sort by all four |
+
+### PII Redaction
+
+Applied at ingest time before any DB write. Patterns: emails, phone numbers, credit cards, SSNs, IPv4 addresses, and API keys/tokens matched by known prefixes (`sk-`, `sk-ant-`, `gsk_`, `AIzaSy`, `ghp_`, `xoxb-`, `Bearer`). Prefix matching avoids false positives on UUIDs and normal long strings — a bug in the original implementation that was fixed.
+
+---
+
+## Bonus Features
+
+| Feature | Status |
+|---|---|
+| Multi-provider support (5 providers) | ✅ Anthropic, OpenAI, Groq, DeepSeek, Gemini |
+| Streaming responses | ✅ True token-by-token SSE streaming |
+| Latency + Throughput + Errors dashboards | ✅ Live charts, p50/p95/p99, TTFT, error rate |
+| Docker Compose one-command setup | ✅ `docker-compose up --build` |
+| Event-based architecture | ✅ Redis pub/sub → SSE live dashboard |
+| PII redaction | ✅ Prefix-aware regex at ingest time |
+| Cancel a conversation | ✅ UI button + `PATCH /api/conversations/:id/cancel` |
+| List conversations | ✅ Filterable by status (active / cancelled) |
+| Resume a conversation | ✅ Click any conversation to reload history and continue |
+| Backend proxy (no browser key exposure) | ✅ All LLM calls go through `/api/proxy/chat` |
+| Token cost tracking | ✅ Per-provider/model pricing table + cost view |
+| TTFT measurement | ✅ Logged per inference call |
+| Rate limiting | ✅ In-process sliding window (60/min ingest, 120/min proxy) |
+| Self-hosted Kubernetes | ✅ Raw manifests (kustomize) + Helm chart + HPA + deploy script |
+
+---
+
+## Kubernetes Deployment
+
+Full self-hosted k8s setup in `k8s/`:
+
+```bash
+# Raw manifests (kustomize)
+kubectl apply -k k8s/overlays/prod
+
+# Or Helm
+helm install llm-logger ./k8s/helm/llm-logger \
+  --namespace llm-logger --create-namespace \
+  --set secrets.groqKey=gsk_... \
+  --set ingestion.image.repository=your-registry/llm-ingestion \
+  --set frontend.image.repository=your-registry/llm-frontend
+```
+
+Includes: Namespace, Deployments, Services, StatefulSet (Postgres), PVCs, Ingress (nginx), HPA (2–8 ingestion replicas), Secrets template.
 
 ---
 
 ## Scaling Considerations
 
-- **Ingestion service** is stateless — horizontally scalable behind a load balancer
-- **Redis** can be replaced with Kafka/SQS for higher throughput event pipelines
-- **Postgres** write bottleneck at scale → batch inserts or async write queues (BullMQ)
-- **SSE** connections are per-server; at scale use a shared Redis channel with multiple ingestion replicas
-- **Log retention** — add a cron job to archive/delete old `inference_logs` rows
+- **Ingestion service** is fully stateless — scale horizontally behind a load balancer; Redis pub/sub keeps SSE consistent across replicas
+- **HPA** configured for ingestion: scales 2→8 replicas at 70% CPU
+- **Postgres** is single-replica with PVC; replace with CloudNativePG operator for HA
+- **Redis** is single-replica; replace with Redis Sentinel or Redis Operator for HA
+- **Rate limiting** is in-process (per replica); replace with Redis-backed rate limiter for consistent limits across replicas
+- **Log retention** — add a cron job or pg_partman to archive/delete old `inference_logs` rows
 
 ## Tradeoffs Made
 
-- **Browser-direct LLM calls** — simpler setup (no backend proxy needed), but exposes API keys to the browser. For production: proxy calls through the backend.
-- **Regex PII redaction** — fast and dependency-free, but not comprehensive. Production would use a dedicated PII service (e.g. AWS Comprehend, Microsoft Presidio).
-- **SQLite not used** — Postgres chosen for JSONB, window functions, and production readiness.
-- **No auth** — out of scope; add JWT middleware to the ingestion service for production.
+- **In-process rate limiting** — simple and dependency-free, but per-replica; a Redis-backed solution (e.g. `ioredis` + sliding window) would give consistent limits across all replicas
+- **Regex PII redaction** — fast and zero-dependency, but not comprehensive; production would use Microsoft Presidio or AWS Comprehend
+- **No auth** — out of scope for this assignment; add JWT middleware to the ingestion service for production
+- **Single Postgres replica** — fine for this scale; CloudNativePG or Zalando Postgres Operator for HA
 
 ## What I'd Improve With More Time
 
-- Backend proxy for LLM calls (remove browser API key exposure)
-- Microsoft Presidio for comprehensive PII detection
-- BullMQ async write queue to decouple ingestion latency from LLM latency
-- Token cost tracking per provider (price per 1K tokens)
-- Conversation search / full-text
-- Export logs as CSV
-- Kubernetes manifests (Helm chart)
+- Microsoft Presidio for comprehensive, ML-backed PII detection
+- BullMQ async write queue to fully decouple DB write latency from LLM latency
+- Full-text search on messages (`tsvector` + `tsquery`)
+- Conversation export as CSV / JSON
 - E2E tests with Playwright
-
----
-
-## Submission
-
-Send to: work@ollive.ai
+- CI/CD pipeline (GitHub Actions → build → push → `helm upgrade`)
+- WebSocket support as an alternative to SSE for bi-directional use cases

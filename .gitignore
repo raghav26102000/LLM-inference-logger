@@ -1,6 +1,31 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
+
+# Environment — NEVER commit real keys
 .env
+*.env.local
+
+# Logs
 *.log
+npm-debug.log*
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Postgres volume data
 postgres_data/
+
+# K8s real secrets (example file is safe to commit, actual secret is not)
+k8s/base/ingestion/secret.yaml
+
+# Helm values with real keys
+helm-values-prod.yaml
+
+# Editor
+.vscode/
+.idea/
+*.swp
