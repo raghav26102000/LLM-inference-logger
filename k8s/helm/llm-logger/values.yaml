@@ -1,0 +1,68 @@
+# values.yaml — all tunables in one place.
+# Override on install: helm install llm-logger ./helm/llm-logger --set ingestion.replicas=3
+
+# ── Images ────────────────────────────────────────────────────────────────────
+ingestion:
+  image:
+    repository: YOUR_REGISTRY/llm-ingestion
+    tag: latest
+    pullPolicy: Always
+  replicas: 1
+  port: 4000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+frontend:
+  image:
+    repository: YOUR_REGISTRY/llm-frontend
+    tag: latest
+    pullPolicy: Always
+  replicas: 1
+  port: 3000
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# ── Postgres ──────────────────────────────────────────────────────────────────
+postgres:
+  image: postgres:16-alpine
+  storageSize: 10Gi
+  # storageClass: ""   # leave empty to use cluster default
+
+# ── Redis ─────────────────────────────────────────────────────────────────────
+redis:
+  image: redis:7-alpine
+  storageSize: 1Gi
+
+# ── HPA (ingestion only — stateless) ─────────────────────────────────────────
+hpa:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 8
+  cpuUtilization: 70
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  host: llm.yourdomain.com
+  tls: false
+  # tlsSecretName: llm-logger-tls
+
+# ── Provider API Keys (set via --set on install, never commit real keys) ──────
+secrets:
+  postgresPassword: changeme-in-prod
+  anthropicKey: ""
+  openaiKey: ""
+  groqKey: ""
+  geminiKey: ""
+  deepseekKey: ""

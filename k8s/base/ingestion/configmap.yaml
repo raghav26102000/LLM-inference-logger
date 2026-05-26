@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingestion-config
+  namespace: llm-logger
+data:
+  PORT: "4000"
+  NODE_ENV: "production"
+  DATABASE_URL: "postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-svc:5432/inference_logs"
+  REDIS_URL: "redis://redis-svc:6379"

@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:         #07070f;
+  --bg2:        #0c0c18;
+  --bg3:        #111120;
+  --bg4:        #161628;
+  --bg5:        #1c1c32;
+  --b1: rgba(255,255,255,0.05);
+  --b2: rgba(255,255,255,0.09);
+  --b3: rgba(255,255,255,0.14);
+  --t1: #f1f1ff;
+  --t2: #9898c0;
+  --t3: #50507a;
+  --accent:     #7c6aff;
+  --accent2:    #a48fff;
+  --accent-dim: rgba(124,106,255,0.12);
+  --accent-glow:rgba(124,106,255,0.28);
+  --green:  #10e09a;  --green-bg:  rgba(16,224,154,0.07);
+  --red:    #ff4d6d;  --red-bg:    rgba(255,77,109,0.07);
+  --yellow: #fbbf24;  --yellow-bg: rgba(251,191,36,0.07);
+  --blue:   #38bdf8;  --blue-bg:   rgba(56,189,248,0.07);
+  --sans: 'Inter', -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --r1: 6px; --r2: 10px; --r3: 16px; --r4: 22px;
+  --s2: 0 4px 20px rgba(0,0,0,0.6);
+  --s3: 0 12px 48px rgba(0,0,0,0.7);
+}
+
+/* ── THE CRITICAL FOUNDATION ──────────────────────────────────────────
+   Every ancestor of a flex scroll container must have a defined height.
+   html → body → #root → .layout → .app-main → .page → .page-body
+   Each must be height:100% or a fixed value. If ANY breaks the chain,
+   flex:1 children collapse to 0 height and nothing scrolls.
+────────────────────────────────────────────────────────────────────── */
+html {
+  height: 100%;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  height: 100%;           /* inherits 100vh from html */
+  background: var(--bg);
+  color: var(--t1);
+  font-family: var(--sans);
+  line-height: 1.5;
+  overflow: hidden;       /* body itself does not scroll */
+}
+#root {
+  height: 100%;           /* fills body's 100% */
+  display: flex;          /* children lay out as flex */
+  overflow: hidden;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--b3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+::selection { background: rgba(124,106,255,0.3); color: #fff; }
+
+button { font-family: var(--sans); cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea, select {
+  font-family: var(--sans); font-size: 13px;
+  background: var(--bg3); color: var(--t1);
+  border: 1px solid var(--b2); border-radius: var(--r2);
+  padding: 8px 12px; outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+@keyframes spin     { to { transform: rotate(360deg); } }
+@keyframes blink    { 0%,100%{opacity:1;} 50%{opacity:0;} }
+@keyframes float    { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-6px);} }
+@keyframes fadeUp   { from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;} }
+@keyframes shimmer  { 0%{background-position:-500px 0} 100%{background-position:500px 0} }
+
+.mono  { font-family: var(--mono); }
+.spin  { animation: spin 0.9s linear infinite; }
+.trunc { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 9px; border-radius: 99px;
+  font-size: 11px; font-weight: 500;
+}
+.pill.success  { background: var(--green-bg); color: var(--green); }
+.pill.error    { background: var(--red-bg);   color: var(--red);   }
+.pill.cancelled{ background: rgba(255,255,255,0.05); color: var(--t3); }
+.pill.active   { background: var(--green-bg); color: var(--green); }
+
+.dot { width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0; }
+.dot.green  { background:var(--green);  box-shadow:0 0 6px var(--green); }
+.dot.red    { background:var(--red);    box-shadow:0 0 6px var(--red); }
+.dot.accent { background:var(--accent); box-shadow:0 0 6px var(--accent); }
+
+.shimmer {
+  background: linear-gradient(90deg, var(--bg3) 25%, var(--bg4) 50%, var(--bg3) 75%);
+  background-size: 500px 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: var(--r2);
+}
+
+.bdg {
+  display:inline-flex;align-items:center;gap:3px;
+  padding:1px 7px;border-radius:99px;
+  font-size:10px;font-weight:600;letter-spacing:.03em;
+}
+.bdg-v { background:var(--green-bg); color:var(--green); }
+.bdg-y { background:var(--yellow-bg);color:var(--yellow);}
+.bdg-d { background:var(--bg5);      color:var(--t3);    }
+
+/* Shared page header — fixed at top of each page */
+.ph {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 20px;
+  border-bottom:1px solid var(--b1);
+  background: var(--bg2);
+  flex-shrink:0;       /* NEVER shrink — always visible */
+  gap:12px; flex-wrap:wrap;
+  min-height: 52px;
+}
+.ph h1 { font-size:15px;font-weight:600;letter-spacing:-.02em;color:var(--t1); }
+.ph-sub{ font-size:11px;color:var(--t3);margin-top:1px; }
+.ph-right{ display:flex;align-items:center;gap:8px;flex-wrap:wrap; }
+
+.ibtn {
+  width:30px;height:30px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r1);
+  color:var(--t2);transition:all .15s;flex-shrink:0;
+}
+.ibtn:hover{background:var(--bg4);color:var(--t1);border-color:var(--b3);}
+
+/* 3D card hover */
+.card-3d {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.card-3d:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}

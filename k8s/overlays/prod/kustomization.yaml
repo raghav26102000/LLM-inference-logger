@@ -1,0 +1,50 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: llm-logger
+
+bases:
+  - ../../base
+
+resources:
+  - hpa.yaml
+
+patches:
+  # 3 ingestion replicas in prod (stateless — safe to scale freely)
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+    target:
+      kind: Deployment
+      name: ingestion
+
+  # 2 frontend replicas (static files, very cheap to run)
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+    target:
+      kind: Deployment
+      name: frontend
+
+  # Tighter resource limits in prod
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+    target:
+      kind: Deployment
+      name: ingestion
+
+images:
+  - name: YOUR_REGISTRY/llm-ingestion
+    newTag: "1.0.0"       # pin to a specific image tag in prod, never :latest
+  - name: YOUR_REGISTRY/llm-frontend
+    newTag: "1.0.0"

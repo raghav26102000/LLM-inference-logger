@@ -1,0 +1,46 @@
+# Ingress — exposes the app externally via nginx-ingress-controller.
+#
+# Prerequisites:
+#   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
+#
+# For a bare-metal / k3s cluster, use the NodePort or HostPort provider instead:
+#   https://kubernetes.github.io/ingress-nginx/deploy/#bare-metal-clusters
+#
+# Replace `llm.yourdomain.com` with your actual domain (or cluster node IP for local testing).
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: llm-logger-ingress
+  namespace: llm-logger
+  annotations:
+    # nginx-ingress annotations
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"       # keep SSE connections alive
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"           # required for SSE streaming
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Connection '';
+      chunked_transfer_encoding on;
+
+    # Uncomment to enable Let's Encrypt TLS via cert-manager:
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  # Uncomment for TLS:
+  # tls:
+  #   - hosts:
+  #       - llm.yourdomain.com
+  #     secretName: llm-logger-tls
+  rules:
+    - host: llm.yourdomain.com          # ← change this
+      http:
+        paths:
+          # All traffic goes to the frontend (nginx there proxies /api/* to ingestion-svc)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-svc
+                port:
+                  number: 3000

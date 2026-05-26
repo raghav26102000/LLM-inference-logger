@@ -1,0 +1,135 @@
+/* ── Root layout ──────────────────────────────────────────────────────
+   #root is height:100%, display:flex (from index.css).
+   .layout fills it completely.
+   .app-main takes remaining width, also height:100%.
+   Each page inside app-main must be height:100% too.
+────────────────────────────────────────────────────────────────────── */
+.layout {
+  display: flex;
+  width: 100%;
+  height: 100%;    /* fills #root */
+  overflow: hidden;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  height: 100%;    /* explicit — not just flex:1 */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Every Route child renders a div that must also fill height */
+.app-main > * {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────── */
+.sidebar {
+  width: 200px;
+  min-width: 200px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg2);
+  border-right: 1px solid var(--b1);
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0; right: -1px;
+  width: 1px; height: 100%;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    rgba(124,106,255,0.35) 40%,
+    rgba(124,106,255,0.35) 60%,
+    transparent 100%);
+  pointer-events: none;
+}
+
+.sb-logo {
+  display: flex; align-items: center; gap: 10px;
+  padding: 15px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--b1);
+  flex-shrink: 0;
+}
+.sb-icon {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), #b06aff);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; flex-shrink: 0;
+  box-shadow: 0 0 16px rgba(124,106,255,0.4);
+}
+.sb-name { font-size: 15px; font-weight: 700; letter-spacing: -.02em; color: var(--t1); }
+
+.sb-nav {
+  display: flex; flex-direction: column;
+  gap: 2px; padding: 10px 8px;
+  flex: 1; overflow-y: auto;
+}
+.sb-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px; border-radius: var(--r2);
+  color: var(--t2); text-decoration: none;
+  font-size: 13px; font-weight: 500;
+  transition: background .15s, color .15s;
+  position: relative; white-space: nowrap;
+}
+.sb-item:hover { background: var(--bg3); color: var(--t1); }
+.sb-item.active {
+  background: var(--accent-dim);
+  color: var(--accent2);
+  box-shadow: inset 0 0 0 1px rgba(124,106,255,0.2);
+}
+.sb-item.active::before {
+  content: '';
+  position: absolute; left: 0; top: 25%; bottom: 25%;
+  width: 2px; background: var(--accent);
+  border-radius: 0 2px 2px 0;
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.sb-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--b1);
+  display: flex; align-items: center; gap: 7px;
+  flex-shrink: 0;
+}
+.sb-status { font-size: 11px; color: var(--t3); }
+
+/* ── Mobile ───────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .layout { flex-direction: column; }
+  .sidebar {
+    width: 100% !important;
+    min-width: unset;
+    height: 52px;
+    flex-direction: row;
+    border-right: none;
+    border-top: 1px solid var(--b1);
+    order: 2;
+  }
+  .sidebar::after { display: none; }
+  .sb-logo, .sb-footer { display: none; }
+  .sb-nav {
+    flex-direction: row; padding: 0 8px;
+    gap: 0; overflow-x: auto;
+    align-items: center; justify-content: space-around;
+    width: 100%;
+  }
+  .sb-item {
+    flex-direction: column; gap: 2px;
+    padding: 6px 10px; font-size: 9px;
+    min-width: 0; flex: 1; justify-content: center;
+  }
+  .sb-item.active::before { display: none; }
+  .app-main { order: 1; }
+}

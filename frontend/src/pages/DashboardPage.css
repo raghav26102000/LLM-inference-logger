@@ -1,0 +1,136 @@
+/* ── Page: height:100% from .app-main > * rule in App.css ────────────
+   flex column: .ph (fixed) + .dash-body (scrolls)
+────────────────────────────────────────────────────────────────────── */
+.dash-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;        /* filled by App.css .app-main > * */
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* ── THE scroll container ─────────────────────────────────────────── */
+.dash-body {
+  flex: 1;
+  min-height: 0;       /* ← CRITICAL: without this, flex:1 won't shrink below content height */
+  overflow-y: auto;
+  padding: 16px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Live pill */
+.live-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px;
+  background: var(--green-bg); border: 1px solid rgba(16,224,154,0.2);
+  border-radius: 99px; font-size: 11px; color: var(--green); font-weight: 500;
+}
+.time-sel {
+  padding: 5px 9px;
+  background: var(--bg3); border: 1px solid var(--b2);
+  border-radius: var(--r2); color: var(--t2); font-size: 12px; cursor: pointer;
+}
+
+/* ── Stat row ─────────────────────────────────────────────────────── */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+.stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--b1);
+  border-top: 2px solid var(--c, var(--b1));
+  border-radius: var(--r3);
+  padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 4px;
+  position: relative; overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute; top: -30px; right: -30px;
+  width: 90px; height: 90px; border-radius: 50%;
+  background: radial-gradient(circle, var(--c, transparent), transparent 70%);
+  opacity: 0.1; pointer-events: none;
+}
+.sc-top { display: flex; align-items: center; gap: 6px; }
+.sc-icon { display: flex; align-items: center; }
+.sc-label {
+  font-size: 10px; color: var(--t3);
+  font-weight: 600; text-transform: uppercase; letter-spacing: .07em;
+}
+.sc-val  { font-size: 26px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; margin-top: 6px; }
+.sc-sub  { font-size: 11px; color: var(--t3); }
+
+/* ── Chart card ───────────────────────────────────────────────────── */
+.ch-card {
+  background: var(--bg2);
+  border: 1px solid var(--b1);
+  border-radius: var(--r3);
+  padding: 16px 18px;
+}
+.ch-head {
+  display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 10px;
+  margin-bottom: 14px;
+}
+.ch-title { font-size: 13px; font-weight: 600; color: var(--t1); letter-spacing: -.01em; }
+.ch-sub   { font-size: 11px; color: var(--t3); margin-top: 2px; }
+
+/* Give charts a fixed pixel height — ResponsiveContainer NEEDS this */
+.chart-wrap {
+  width: 100%;
+  height: 220px;       /* fixed px height — % doesn't work in flex */
+}
+
+.ch-skel  { height: 220px; border-radius: var(--r2); }
+.ch-empty {
+  height: 220px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px; color: var(--t3); font-size: 12px;
+}
+
+/* ── Tables ───────────────────────────────────────────────────────── */
+.tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.dtbl {
+  width: 100%; border-collapse: collapse;
+  font-size: 12px; min-width: 600px;
+}
+.dtbl th {
+  text-align: left; padding: 6px 12px;
+  font-size: 10px; font-weight: 600; color: var(--t3);
+  text-transform: uppercase; letter-spacing: .06em;
+  border-bottom: 1px solid var(--b1); white-space: nowrap;
+  background: rgba(0,0,0,0.2);
+  position: sticky; top: 0;
+}
+.dtbl td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--b1);
+  color: var(--t2); white-space: nowrap;
+}
+.dtbl tr:last-child td { border-bottom: none; }
+.dtbl tr:hover td { background: rgba(255,255,255,0.02); }
+
+.p-chip {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px;
+  background: var(--accent-dim); border: 1px solid rgba(124,106,255,0.2);
+  border-radius: 99px; font-size: 10.5px; color: var(--accent2); font-weight: 500;
+}
+.ev-bad { display:inline-flex;align-items:center;gap:3px;color:var(--red);  font-size:11px;font-weight:500; }
+.ev-ok  { display:inline-flex;align-items:center;gap:3px;color:var(--green);font-size:11px;font-weight:500; }
+.log-prev { max-width:150px;overflow:hidden;text-overflow:ellipsis;color:var(--t3)!important;font-style:italic; }
+.tbl-empty { text-align:center;color:var(--t3);padding:32px!important;font-style:italic; }
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 1100px) { .stat-row { grid-template-columns: repeat(3,1fr); } }
+@media (max-width:  700px) {
+  .stat-row { grid-template-columns: repeat(2,1fr); }
+  .dash-body { padding: 12px 12px 32px; gap: 12px; }
+  .sc-val { font-size: 22px; }
+}
+@media (max-width: 480px)  { .stat-row { grid-template-columns: 1fr 1fr; } }

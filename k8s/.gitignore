@@ -1,0 +1,9 @@
+# Real secret file — never commit this
+k8s/base/ingestion/secret.yaml
+
+# Helm values with real keys
+helm-values-prod.yaml
+
+# Local kube configs
+*.kubeconfig
+kubeconfig
