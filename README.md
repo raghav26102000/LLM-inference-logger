@@ -10,6 +10,22 @@ A production-grade inference logging and ingestion system for LLM applications â
 
 ---
 
+## Screenshots
+
+### Chat
+![Chat](screenshots/chat.png)
+
+### Dashboard
+![Dashboard](screenshots/dashboard.png)
+
+### Conversations
+![Conversations](screenshots/conversations.png)
+
+### Settings
+![Settings](screenshots/settings.png)
+
+---
+
 ## Quick Start (Docker â€” one command)
 
 ```bash
